@@ -20,7 +20,7 @@ async function main() {
     console.log("Depositing...")
     await lendingPool.deposit(wethTokenAddress, AMOUNT, deployer, 0) //refer to aave docs for all items needed to deposit
     console.log("Deposited!")
-    let { availableBorrowsETH, totalDebtETH } = await getBorrowerUserData(lendingPool, deployer)
+    let { availableBorrowsETH, totalDebtETH } = await getBorrowUserData(lendingPool, deployer)
     const daiPrice = await getDaiPrice() //need to convert amount we can borrow in DAI-see below
     const amountDaiToBorrow = availableBorrowsETH.toString() * 0.95 * (1 / daiPrice.toNumber())
     console.log(`you can borrow ${amountDaiToBorrow} DAI`)
@@ -31,9 +31,9 @@ async function main() {
     //how much we have borrowed, how much we have in collateral, how much we can borrow using "getUserAccountData()"
     const daiTokenAddress = "0x6B175474E89094C44Da98b954EedeAC495271d0F"
     await borrowDai(daiTokenAddress, lendingPool, amountDaiToBorrowWei, deployer)
-    await getBorrowerUserData(lendingPool, deployer) //print user data
+    await getBorrowUserData(lendingPool, deployer) //print user data
     await repay(amountDaiToBorrowWei, daiTokenAddress, lendingPool, deployer)
-    await getBorrowerUserData(lendingPool, deployer)
+    await getBorrowUserData(lendingPool, deployer)
 }
 
 async function repay(amount, daiAddress, lendingPool, account) {
@@ -43,7 +43,7 @@ async function repay(amount, daiAddress, lendingPool, account) {
     console.log("Repaid!")
 }
 
-async function borrowDai(daiAddress, lendingPool, amountDaiToBorrowWei, account) {
+async function borrowDai(daiAddress, lendingPool, amountDaiToBorrow, account) {
     const borrowTx = await lendingPool.borrow(daiAddress, amountDaiToBorrow, 1, 0, account) //check "borrow()" doc
     await borrowTx.wait(1)
     console.log("You've borrowed!")
@@ -56,9 +56,10 @@ async function getDaiPrice() {
     )
     const price = (await daiEthPriceFeed.latestRoundData())[1] //only want the "answer" from first index
     console.log(`the DAI/ETH pirce is ${price.toString()}`)
+    return price
 }
 
-async function getBorrowerUserData(lendingPool, account) {
+async function getBorrowUserData(lendingPool, account) {
     const {
         totalCollateralETH,
         totalDebtETH,
@@ -71,12 +72,12 @@ async function getBorrowerUserData(lendingPool, account) {
 }
 
 async function getLendingPool(account) {
-    const lendingPoolAddressProvider = await ethers.getContractAt(
+    const lendingPoolAddressesProvider = await ethers.getContractAt(
         "ILendingPoolAddressesProvider",
         "0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5",
         account //this account we pass the deployer from "const { deployer } = await getNamedAccounts()"
     )
-    const lendingPoolAddress = await lendingPoolAddressProvider.getLendingPool() //calling function from lendingPoolAddressesProvider contract
+    const lendingPoolAddress = await lendingPoolAddressesProvider.getLendingPool() //calling function from lendingPoolAddressesProvider contract
     const lendingPool = await ethers.getContractAt("ILendingPool", lendingPoolAddress, account)
     return lendingPool
 }
